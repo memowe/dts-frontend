@@ -3,7 +3,7 @@ import { LitElement, html } from "lit";
 class DtsCollections extends LitElement {
   static properties = {
     root: {},
-    apiRoot: { type: Boolean },
+    isApiRoot: { type: Boolean },
     collectionPath: {},
     tree: {},
     treeErrors: {},
@@ -71,12 +71,12 @@ class DtsCollections extends LitElement {
         <h2>Collections</h2>
         <nav>
           <button aria-pressed=${!this.collectionPath?.length || this.collectionPath.at(-1) === this.root?.["@id"]}
-            @click=${() => this.select(this.apiRoot ? [] : [this.root?.["@id"]])}>
+            @click=${() => this.select(this.isApiRoot ? [] : [this.root?.["@id"]])}>
             ${this.root?.title}
           </button>
           <ul>
             ${this.tree?.get(this.root?.["@id"])?.map(collection =>
-              this.renderCollection(collection, this.apiRoot ? [collection["@id"]] : [this.root["@id"], collection["@id"]])
+              this.renderCollection(collection, this.isApiRoot ? [collection["@id"]] : [this.root["@id"], collection["@id"]])
             )}
           </ul>
         </nav>

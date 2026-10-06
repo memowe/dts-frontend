@@ -23,6 +23,7 @@ class DtsApp extends LitElement {
   static properties = {
     apiUrl: {},
     apiRoot: { state: true },
+    isApiRoot: { state: true },
     collection: { state: true },
     root: { state: true },
     collectionPath: { state: true },
@@ -140,6 +141,7 @@ class DtsApp extends LitElement {
       this.root = root;
       this.collection = collection;
       this.collectionPath = route.collections;
+      this.isApiRoot = route.collections.length === 0;
       this.resource = resource;
       this.tree = tree;
     } catch (error) {
@@ -185,7 +187,7 @@ class DtsApp extends LitElement {
       <main class="grid">
         <dts-collections
           .root=${this.root}
-          .apiRoot=${this.root === this.apiRoot}
+          .isApiRoot=${this.isApiRoot}
           .collectionPath=${this.collectionPath || []}
           .tree=${this.tree}
           .treeErrors=${this.treeErrors}
