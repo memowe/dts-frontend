@@ -1,4 +1,6 @@
 import { LitElement, html } from "lit";
+import "./dts-collections.js";
+import "./dts-resources.js";
 
 const get = async url => {
   const response = await fetch(url);
@@ -16,6 +18,7 @@ class DtsApp extends LitElement {
   static properties = {
     apiUrl: {},
     collection: { state: true },
+    root: { state: true },
     loading: { state: true },
     error: { state: true }
   };
@@ -40,6 +43,7 @@ class DtsApp extends LitElement {
       const entry = await get(this.apiUrl);
       this.collectionUrl = entry.collection;
       this.root = await get(expand(entry.collection, this.apiUrl));
+      this.collection = this.root;
       this.links = new Map((this.root.member || [])
         .filter(item => item["@type"] === "Collection")
         .map(item => [item["@id"], item.collection]));
@@ -52,6 +56,12 @@ class DtsApp extends LitElement {
   }
 
   onHashChange = () => this.loadCollection();
+
+  selectCollection(event) {
+    location.hash = event.detail
+      ? `collection=${encodeURIComponent(event.detail)}`
+      : "";
+  }
 
   async loadCollection() {
     const id = new URLSearchParams(location.hash.slice(1)).get("collection");
@@ -75,31 +85,17 @@ class DtsApp extends LitElement {
     if (this.loading) return html`<p>Lade …</p>`;
     if (this.error) return html`<p>Fehler beim Laden: ${this.error}</p>`;
 
-    const members = this.collection?.member || [];
     return html`
       <main class="grid">
-        <aside>
-          <h2>Collections</h2>
-          <nav>
-            <ul>
-              ${this.collection?.["@id"] !== this.root?.["@id"]
-                ? html`<li><a href="#">${this.root?.title}</a></li>`
-                : ""}
-              ${members.filter(item => item["@type"] === "Collection").map(item => html`
-                <li><a href="#collection=${encodeURIComponent(item["@id"])}">${item.title}</a></li>
-              `)}
-            </ul>
-          </nav>
-        </aside>
-        <section>
-          <h2>Resources</h2>
-          ${members.filter(item => item["@type"] === "Resource").map(item => html`
-            <article>
-              <h3>${item.title}</h3>
-              ${item.description ? html`<p>${item.description}</p>` : ""}
-            </article>
-          `)}
-        </section>
+        <dts-collections
+          .collections=${this.collection?.member?.filter(item => item["@type"] === "Collection")}
+          .root=${this.root}
+          .selected=${this.collection?.["@id"] === this.root?.["@id"] ? null : this.collection?.["@id"]}
+          @collection-select=${this.selectCollection}>
+        </dts-collections>
+        <dts-resources
+          .resources=${this.collection?.member?.filter(item => item["@type"] === "Resource")}>
+        </dts-resources>
       </main>
     `;
   }
