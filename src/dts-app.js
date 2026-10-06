@@ -19,6 +19,7 @@ class DtsApp extends LitElement {
     apiUrl: {},
     collection: { state: true },
     root: { state: true },
+    tree: { state: true },
     loading: { state: true },
     error: { state: true }
   };
@@ -44,6 +45,7 @@ class DtsApp extends LitElement {
       this.collectionUrl = entry.collection;
       this.root = await get(expand(entry.collection, this.apiUrl));
       this.collection = this.root;
+      this.tree = new Map([[this.root["@id"], this.childCollections(this.root)]]);
       this.links = new Map((this.root.member || [])
         .filter(item => item["@type"] === "Collection")
         .map(item => [item["@id"], item.collection]));
@@ -63,6 +65,24 @@ class DtsApp extends LitElement {
       : "";
   }
 
+  childCollections(collection) {
+    return (collection.member || []).filter(item => item["@type"] === "Collection");
+  }
+
+  async loadChildren(event) {
+    const collection = event.detail;
+    const id = collection["@id"];
+    if (this.tree.has(id)) return;
+    this.tree = new Map(this.tree).set(id, []);
+    try {
+      const data = await get(expand(collection.collection, this.apiUrl, id));
+      this.tree = new Map(this.tree).set(id, this.childCollections(data));
+      for (const child of this.childCollections(data)) this.links.set(child["@id"], child.collection);
+    } catch (error) {
+      this.error = error.message;
+    }
+  }
+
   async loadCollection() {
     const id = new URLSearchParams(location.hash.slice(1)).get("collection");
     this.loading = true;
@@ -71,9 +91,8 @@ class DtsApp extends LitElement {
       this.collection = id
         ? await get(expand(this.links.get(id) || this.collectionUrl, this.apiUrl, id))
         : this.root;
-      for (const item of this.collection.member || []) {
-        if (item["@type"] === "Collection") this.links.set(item["@id"], item.collection);
-      }
+      this.tree = new Map(this.tree).set(this.collection["@id"], this.childCollections(this.collection));
+      for (const item of this.childCollections(this.collection)) this.links.set(item["@id"], item.collection);
     } catch (error) {
       this.error = error.message;
     } finally {
@@ -88,10 +107,12 @@ class DtsApp extends LitElement {
     return html`
       <main class="grid">
         <dts-collections
-          .collections=${this.collection?.member?.filter(item => item["@type"] === "Collection")}
+          .collections=${this.childCollections(this.root)}
           .root=${this.root}
           .selected=${this.collection?.["@id"] === this.root?.["@id"] ? null : this.collection?.["@id"]}
-          @collection-select=${this.selectCollection}>
+          .tree=${this.tree}
+          @collection-select=${this.selectCollection}
+          @collection-expand=${this.loadChildren}>
         </dts-collections>
         <dts-resources
           .resources=${this.collection?.member?.filter(item => item["@type"] === "Resource")}>
