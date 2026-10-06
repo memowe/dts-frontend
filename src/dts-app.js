@@ -40,13 +40,13 @@ class DtsApp extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.removeNavigationListener = onNavigationChange(this.onHashChange);
     this.start();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.removeNavigationListener?.();
+    this.removeNavigationListener = null;
   }
 
   async start() {
@@ -54,6 +54,8 @@ class DtsApp extends LitElement {
     try {
       const entry = await get(this.apiUrl);
       this.collectionUrl = entry.collection;
+      if (!this.isConnected) return;
+      this.removeNavigationListener = onNavigationChange(this.onHashChange);
       await this.loadRoute(getNavigationFromUrl());
     } catch (error) {
       this.error = error.message;
