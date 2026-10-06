@@ -101,7 +101,7 @@ class DtsApp extends LitElement {
         root = await get(expand(this.collectionUrl, this.apiUrl, route.collections[0]));
         if (request !== this.routeRequest) return;
         if (root["@id"] !== route.collections[0]) {
-          throw new Error(`Collection nicht gefunden: ${route.collections[0]}`);
+          throw new Error(`Collection not found: ${route.collections[0]}`);
         }
         collection = root;
         tree.set(collection["@id"], this.childCollections(collection));
@@ -109,11 +109,11 @@ class DtsApp extends LitElement {
         for (const id of route.collections.slice(1)) {
           const children = this.childCollections(collection);
           const child = children.find(item => item["@id"] === id);
-          if (!child) throw new Error(`Collection nicht im Pfad gefunden: ${id}`);
+          if (!child) throw new Error(`Collection not found in path: ${id}`);
           tree.set(collection["@id"], children);
           collection = await get(expand(child.collection, this.apiUrl, id));
           if (request !== this.routeRequest) return;
-          if (collection["@id"] !== id) throw new Error(`Collection nicht gefunden: ${id}`);
+          if (collection["@id"] !== id) throw new Error(`Collection not found: ${id}`);
           tree.set(collection["@id"], this.childCollections(collection));
         }
       } else {
@@ -133,7 +133,7 @@ class DtsApp extends LitElement {
         resource = (collection.member || []).find(item =>
           item["@type"] === "Resource" && item["@id"] === route.resource
         );
-        if (!resource) throw new Error(`Resource nicht in der Collection gefunden: ${route.resource}`);
+        if (!resource) throw new Error(`Resource not found in Collection: ${route.resource}`);
       }
 
       this.root = root;
@@ -175,8 +175,8 @@ class DtsApp extends LitElement {
   }
 
   render() {
-    if (this.loading) return html`<p>Lade …</p>`;
-    if (this.error) return html`<p>Fehler beim Laden: ${this.error}</p>`;
+    if (this.loading) return html`<p>Loading…</p>`;
+    if (this.error) return html`<p>Error loading data: ${this.error}</p>`;
 
     return html`
       <main class="grid">

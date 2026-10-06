@@ -7,7 +7,7 @@ const decode = value => {
   try {
     return decodeURIComponent(value);
   } catch {
-    throw new Error("Ungültige URL-Kodierung");
+    throw new Error("Invalid URL encoding");
   }
 };
 
@@ -19,19 +19,19 @@ export const getNavigationFromUrl = () => {
   if (segments[0] === "resources" && segments.length === 2 && segments[1]) {
     return { collections: [], resource: decode(segments[1]) };
   }
-  if (segments[0] !== "collections") throw new Error("Ungültige Navigations-URL");
+  if (segments[0] !== "collections") throw new Error("Invalid navigation URL");
 
   const resourceIndex = segments.indexOf("resources", 1);
   const collectionSegments = segments.slice(1, resourceIndex === -1 ? undefined : resourceIndex);
   if (!collectionSegments.length || collectionSegments.some(segment => !segment)) {
-    throw new Error("Ungültige Navigations-URL");
+    throw new Error("Invalid navigation URL");
   }
 
   const collections = collectionSegments.map(decode);
   let resource = null;
   if (resourceIndex !== -1) {
     if (resourceIndex !== segments.length - 2 || !segments.at(-1)) {
-      throw new Error("Ungültige Navigations-URL");
+      throw new Error("Invalid navigation URL");
     }
     resource = decode(segments.at(-1));
   }

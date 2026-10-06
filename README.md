@@ -1,29 +1,30 @@
-# DTS-Browser
+# DTS Browser
 
-Kleiner Browser-Prototyp für Collections und Resources einer DTS-1.0-API.
-Lit 3 wird per Import Map über ein CDN geladen; ein Buildsystem ist nicht nötig.
+A small browser prototype for Collections and Resources from a DTS 1.0 API.
+Lit 3 is loaded from a CDN through an import map; no build system is required.
 
-Die API-Adresse wird in `config.json` unter `apiUrl` konfiguriert. Standardmäßig
-wird ein lokal laufender DTS-Service unter `http://localhost:8080/` erwartet.
-Wird das Frontend mit `python -m http.server` auf Port 8000 ausgeliefert, muss
-der Service CORS für diesen Origin erlauben.
-Die URL bildet die Collection-Hierarchie als Hash-Route ab, zum Beispiel
-`#/collections/<root-id>/<child-id>`. Eine ausgewählte Resource steht optional
-am Ende der Route (`/resources/<resource-id>`); für eine Resource der API-Wurzel
-lautet die Route `#/resources/<resource-id>`.
-Die erste Collection bildet die Wurzel des angezeigten Teilbaums; jede folgende
-Collection muss ein direktes Kind der vorherigen sein.
+Configure the API URL in `config.json` under `apiUrl`. By default, the app
+expects a local DTS service at `http://localhost:8080/`. If you serve the
+frontend with `python -m http.server` on port 8000, the service must allow that
+origin through CORS.
 
-Lokal starten:
+The URL represents the Collection hierarchy as a hash route, for example
+`#/collections/<root-id>/<child-id>`. An optional selected Resource appears at
+the end of the route (`/resources/<resource-id>`); for a Resource in the API
+root, the route is `#/resources/<resource-id>`.
+
+The first Collection is the root of the displayed subtree; each subsequent
+Collection must be a direct child of the previous one.
+
+## Run locally
 
 ```sh
 python -m http.server
 ```
 
-GitHub Pages veröffentlicht die statischen Dateien direkt, ohne Build-Schritt.
-Für eine GitHub-Pages-Bereitstellung muss `apiUrl` auf einen von dort erreichbaren
-DTS-Service geändert werden; `localhost` bezeichnet immer den Rechner des
-jeweiligen Besuchers.
+GitHub Pages serves the static files directly, without a build step. For a
+GitHub Pages deployment, set `apiUrl` to a reachable DTS service; `localhost`
+always refers to each visitor's own computer.
 
 ## Copyright and License
 

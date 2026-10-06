@@ -37,7 +37,7 @@ class DtsResources extends LitElement {
         <h2>Resources</h2>
         ${this.selected
           ? html`${this.renderResource(this.selected, true)}
-            <button @click=${() => this.select(null)}>Alle Resources</button>`
+            <button @click=${() => this.select(null)}>All resources</button>`
           : this.resources?.map(resource => this.renderResource(resource))}
       </section>
     `;

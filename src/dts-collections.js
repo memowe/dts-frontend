@@ -52,8 +52,8 @@ class DtsCollections extends LitElement {
         <details ?open=${expanded} @toggle=${event => this.toggle(event, collection)}>
           <summary>${collection.title}</summary>
           <button aria-pressed=${selected}
-            @click=${() => this.select(path)}>Auswählen</button>
-          ${status?.loading ? html`<p>Lade …</p>` : ""}
+            @click=${() => this.select(path)}>Select</button>
+          ${status?.loading ? html`<p>Loading…</p>` : ""}
           ${status?.error ? html`<p role="alert">${status.error}</p>` : ""}
           ${children.length ? html`<ul>${children.map(child =>
             this.renderCollection(child, [...path, child["@id"]])
