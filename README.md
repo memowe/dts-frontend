@@ -24,3 +24,9 @@ GitHub Pages veröffentlicht die statischen Dateien direkt, ohne Build-Schritt.
 Für eine GitHub-Pages-Bereitstellung muss `apiUrl` auf einen von dort erreichbaren
 DTS-Service geändert werden; `localhost` bezeichnet immer den Rechner des
 jeweiligen Besuchers.
+
+## Copyright and License
+
+Copyright (c) 2026 Mirko Westermeier
+
+Released under the [MIT License](LICENSE).
