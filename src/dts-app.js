@@ -122,7 +122,6 @@ class DtsApp extends LitElement {
           if (request !== this.routeRequest) return;
           this.apiRoot = apiRoot;
         }
-        if (request !== this.routeRequest) return;
         root = apiRoot;
         collection = apiRoot;
         tree.set(collection["@id"], this.childCollections(collection));
