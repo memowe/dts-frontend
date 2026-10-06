@@ -76,10 +76,7 @@ class DtsApp extends LitElement {
   }
 
   selectResource(event) {
-    const path = this.collectionPath.length
-      ? this.collectionPath
-      : [this.collection["@id"]];
-    navigateTo(path, event.detail);
+    navigateTo(this.collectionPath || [], event.detail);
   }
 
   childCollections(collection) {

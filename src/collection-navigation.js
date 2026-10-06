@@ -16,6 +16,9 @@ export const getNavigationFromUrl = () => {
   if (!hash || hash === "#/") return { collections: [], resource: null };
 
   const segments = hash.slice(2).split("/");
+  if (segments[0] === "resources" && segments.length === 2 && segments[1]) {
+    return { collections: [], resource: decode(segments[1]) };
+  }
   if (segments[0] !== "collections") throw new Error("Ungültige Navigations-URL");
 
   const resourceIndex = segments.indexOf("resources", 1);
@@ -38,7 +41,7 @@ export const getNavigationFromUrl = () => {
 
 export const navigateTo = (collections, resource = null) => {
   if (!collections.length) {
-    window.location.hash = "/";
+    window.location.hash = resource ? `/resources/${encode(resource)}` : "/";
     return;
   }
 
