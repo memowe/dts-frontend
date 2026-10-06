@@ -1,6 +1,11 @@
 import { LitElement, html } from "lit";
 import "./dts-collections.js";
 import "./dts-resources.js";
+import {
+  getCollectionIdFromUrl,
+  navigateToCollection,
+  onNavigationChange
+} from "./collection-navigation.js";
 
 const get = async url => {
   const response = await fetch(url);
@@ -30,12 +35,13 @@ class DtsApp extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.removeNavigationListener = onNavigationChange(this.onHashChange);
     this.start();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    window.removeEventListener("hashchange", this.onHashChange);
+    this.removeNavigationListener?.();
   }
 
   async start() {
@@ -49,20 +55,24 @@ class DtsApp extends LitElement {
       this.links = new Map((this.root.member || [])
         .filter(item => item["@type"] === "Collection")
         .map(item => [item["@id"], item.collection]));
-      await this.loadCollection();
-      window.addEventListener("hashchange", this.onHashChange);
+      await this.loadCollection(getCollectionIdFromUrl());
     } catch (error) {
       this.error = error.message;
       this.loading = false;
     }
   }
 
-  onHashChange = () => this.loadCollection();
+  onHashChange = () => {
+    try {
+      this.loadCollection(getCollectionIdFromUrl());
+    } catch (error) {
+      this.error = error.message;
+      this.loading = false;
+    }
+  };
 
   selectCollection(event) {
-    location.hash = event.detail
-      ? `collection=${encodeURIComponent(event.detail)}`
-      : "";
+    navigateToCollection(event.detail);
   }
 
   childCollections(collection) {
@@ -83,8 +93,7 @@ class DtsApp extends LitElement {
     }
   }
 
-  async loadCollection() {
-    const id = new URLSearchParams(location.hash.slice(1)).get("collection");
+  async loadCollection(id) {
     this.loading = true;
     this.error = "";
     try {
