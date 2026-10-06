@@ -119,10 +119,15 @@ class DtsApp extends LitElement {
           tree.set(collection["@id"], this.childCollections(collection));
         }
       } else {
-        this.apiRoot ||= await get(expand(this.collectionUrl, this.apiUrl));
+        let apiRoot = this.apiRoot;
+        if (!apiRoot) {
+          apiRoot = await get(expand(this.collectionUrl, this.apiUrl));
+          if (request !== this.routeRequest) return;
+          this.apiRoot = apiRoot;
+        }
         if (request !== this.routeRequest) return;
-        root = this.apiRoot;
-        collection = this.apiRoot;
+        root = apiRoot;
+        collection = apiRoot;
         tree.set(collection["@id"], this.childCollections(collection));
       }
 
