@@ -29,8 +29,7 @@ class DtsApp extends LitElement {
     collectionPath: { state: true },
     resource: { state: true },
     tree: { state: true },
-    treeErrors: { state: true },
-    loadingChildren: { state: true },
+    treeStatus: { state: true },
     loading: { state: true },
     error: { state: true }
   };
@@ -91,8 +90,7 @@ class DtsApp extends LitElement {
     this.routeRequest = request;
     this.loading = true;
     this.error = "";
-    this.treeErrors = new Map();
-    this.loadingChildren = new Set();
+    this.treeStatus = new Map();
 
     try {
       let root;
@@ -154,14 +152,9 @@ class DtsApp extends LitElement {
   async loadChildren(event) {
     const collection = event.detail;
     const id = collection["@id"];
-    if (this.tree.has(id) || this.loadingChildren?.has(id)) return;
+    if (this.tree.has(id) || this.treeStatus?.get(id)?.loading) return;
     const request = this.routeRequest;
-    const loading = new Set(this.loadingChildren || []);
-    loading.add(id);
-    this.loadingChildren = loading;
-    const errors = new Map(this.treeErrors || []);
-    errors.delete(id);
-    this.treeErrors = errors;
+    this.treeStatus = new Map(this.treeStatus || []).set(id, { loading: true });
 
     try {
       const data = await get(expand(collection.collection, this.apiUrl, id));
@@ -169,12 +162,14 @@ class DtsApp extends LitElement {
       this.tree = new Map(this.tree).set(id, this.childCollections(data));
     } catch (error) {
       if (request !== this.routeRequest) return;
-      this.treeErrors = new Map(this.treeErrors).set(id, error.message);
+      this.treeStatus = new Map(this.treeStatus).set(id, { error: error.message });
     } finally {
       if (request === this.routeRequest) {
-        const loading = new Set(this.loadingChildren || []);
-        loading.delete(id);
-        this.loadingChildren = loading;
+        if (this.treeStatus.get(id)?.loading) {
+          const treeStatus = new Map(this.treeStatus);
+          treeStatus.delete(id);
+          this.treeStatus = treeStatus;
+        }
       }
     }
   }
@@ -190,8 +185,7 @@ class DtsApp extends LitElement {
           .isApiRoot=${this.isApiRoot}
           .collectionPath=${this.collectionPath || []}
           .tree=${this.tree}
-          .treeErrors=${this.treeErrors}
-          .loadingChildren=${this.loadingChildren}
+          .treeStatus=${this.treeStatus}
           @collection-select=${this.selectCollection}
           @collection-expand=${this.loadChildren}>
         </dts-collections>

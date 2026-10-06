@@ -6,8 +6,7 @@ class DtsCollections extends LitElement {
     isApiRoot: { type: Boolean },
     collectionPath: {},
     tree: {},
-    treeErrors: {},
-    loadingChildren: {},
+    treeStatus: {},
     openCollections: { state: true }
   };
 
@@ -44,6 +43,7 @@ class DtsCollections extends LitElement {
 
   renderCollection(collection, path) {
     const children = this.tree?.get(collection["@id"]) || [];
+    const status = this.treeStatus?.get(collection["@id"]);
     const selected = path.at(-1) === this.collectionPath?.at(-1);
     const expanded = this.collectionPath?.includes(collection["@id"])
       || this.openCollections?.has(collection["@id"]);
@@ -53,10 +53,8 @@ class DtsCollections extends LitElement {
           <summary>${collection.title}</summary>
           <button aria-pressed=${selected}
             @click=${() => this.select(path)}>Auswählen</button>
-          ${this.loadingChildren?.has(collection["@id"]) ? html`<p>Lade …</p>` : ""}
-          ${this.treeErrors?.get(collection["@id"])
-            ? html`<p role="alert">${this.treeErrors.get(collection["@id"])}</p>`
-            : ""}
+          ${status?.loading ? html`<p>Lade …</p>` : ""}
+          ${status?.error ? html`<p role="alert">${status.error}</p>` : ""}
           ${children.length ? html`<ul>${children.map(child =>
             this.renderCollection(child, [...path, child["@id"]])
           )}</ul>` : ""}
