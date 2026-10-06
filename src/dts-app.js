@@ -2,8 +2,8 @@ import { LitElement, html } from "lit";
 import "./dts-collections.js";
 import "./dts-resources.js";
 import {
-  getCollectionIdFromUrl,
-  navigateToCollection,
+  getNavigationFromUrl,
+  navigateTo,
   onNavigationChange
 } from "./collection-navigation.js";
 
@@ -22,9 +22,14 @@ const expand = (template, base, id) => new URL(template.replace(/\{([?&])([^}]+)
 class DtsApp extends LitElement {
   static properties = {
     apiUrl: {},
+    apiRoot: { state: true },
     collection: { state: true },
     root: { state: true },
+    collectionPath: { state: true },
+    resource: { state: true },
     tree: { state: true },
+    treeErrors: { state: true },
+    loadingChildren: { state: true },
     loading: { state: true },
     error: { state: true }
   };
@@ -49,13 +54,7 @@ class DtsApp extends LitElement {
     try {
       const entry = await get(this.apiUrl);
       this.collectionUrl = entry.collection;
-      this.root = await get(expand(entry.collection, this.apiUrl));
-      this.collection = this.root;
-      this.tree = new Map([[this.root["@id"], this.childCollections(this.root)]]);
-      this.links = new Map((this.root.member || [])
-        .filter(item => item["@type"] === "Collection")
-        .map(item => [item["@id"], item.collection]));
-      await this.loadCollection(getCollectionIdFromUrl());
+      await this.loadRoute(getNavigationFromUrl());
     } catch (error) {
       this.error = error.message;
       this.loading = false;
@@ -64,48 +63,114 @@ class DtsApp extends LitElement {
 
   onHashChange = () => {
     try {
-      this.loadCollection(getCollectionIdFromUrl());
+      this.loadRoute(getNavigationFromUrl());
     } catch (error) {
+      this.routeRequest = (this.routeRequest || 0) + 1;
       this.error = error.message;
       this.loading = false;
     }
   };
 
   selectCollection(event) {
-    navigateToCollection(event.detail);
+    navigateTo(event.detail);
+  }
+
+  selectResource(event) {
+    const path = this.collectionPath.length
+      ? this.collectionPath
+      : [this.collection["@id"]];
+    navigateTo(path, event.detail);
   }
 
   childCollections(collection) {
     return (collection.member || []).filter(item => item["@type"] === "Collection");
   }
 
-  async loadChildren(event) {
-    const collection = event.detail;
-    const id = collection["@id"];
-    if (this.tree.has(id)) return;
-    this.tree = new Map(this.tree).set(id, []);
+  async loadRoute(route) {
+    const request = (this.routeRequest || 0) + 1;
+    this.routeRequest = request;
+    this.loading = true;
+    this.error = "";
+    this.treeErrors = new Map();
+    this.loadingChildren = new Set();
+
     try {
-      const data = await get(expand(collection.collection, this.apiUrl, id));
-      this.tree = new Map(this.tree).set(id, this.childCollections(data));
-      for (const child of this.childCollections(data)) this.links.set(child["@id"], child.collection);
+      let root;
+      let collection;
+      const tree = new Map();
+
+      if (route.collections.length) {
+        root = await get(expand(this.collectionUrl, this.apiUrl, route.collections[0]));
+        if (request !== this.routeRequest) return;
+        if (root["@id"] !== route.collections[0]) {
+          throw new Error(`Collection nicht gefunden: ${route.collections[0]}`);
+        }
+        collection = root;
+        tree.set(collection["@id"], this.childCollections(collection));
+
+        for (const id of route.collections.slice(1)) {
+          const children = this.childCollections(collection);
+          const child = children.find(item => item["@id"] === id);
+          if (!child) throw new Error(`Collection nicht im Pfad gefunden: ${id}`);
+          tree.set(collection["@id"], children);
+          collection = await get(expand(child.collection, this.apiUrl, id));
+          if (request !== this.routeRequest) return;
+          if (collection["@id"] !== id) throw new Error(`Collection nicht gefunden: ${id}`);
+          tree.set(collection["@id"], this.childCollections(collection));
+        }
+      } else {
+        this.apiRoot ||= await get(expand(this.collectionUrl, this.apiUrl));
+        if (request !== this.routeRequest) return;
+        root = this.apiRoot;
+        collection = this.apiRoot;
+        tree.set(collection["@id"], this.childCollections(collection));
+      }
+
+      let resource = null;
+      if (route.resource) {
+        resource = (collection.member || []).find(item =>
+          item["@type"] === "Resource" && item["@id"] === route.resource
+        );
+        if (!resource) throw new Error(`Resource nicht in der Collection gefunden: ${route.resource}`);
+      }
+
+      this.root = root;
+      this.collection = collection;
+      this.collectionPath = route.collections;
+      this.resource = resource;
+      this.tree = tree;
     } catch (error) {
-      this.error = error.message;
+      if (request === this.routeRequest) this.error = error.message;
+    } finally {
+      if (request === this.routeRequest) this.loading = false;
     }
   }
 
-  async loadCollection(id) {
-    this.loading = true;
-    this.error = "";
+  async loadChildren(event) {
+    const collection = event.detail;
+    const id = collection["@id"];
+    if (this.tree.has(id) || this.loadingChildren?.has(id)) return;
+    const request = this.routeRequest;
+    const loading = new Set(this.loadingChildren || []);
+    loading.add(id);
+    this.loadingChildren = loading;
+    const errors = new Map(this.treeErrors || []);
+    errors.delete(id);
+    this.treeErrors = errors;
+
     try {
-      this.collection = id
-        ? await get(expand(this.links.get(id) || this.collectionUrl, this.apiUrl, id))
-        : this.root;
-      this.tree = new Map(this.tree).set(this.collection["@id"], this.childCollections(this.collection));
-      for (const item of this.childCollections(this.collection)) this.links.set(item["@id"], item.collection);
+      const data = await get(expand(collection.collection, this.apiUrl, id));
+      if (request !== this.routeRequest) return;
+      this.tree = new Map(this.tree).set(id, this.childCollections(data));
     } catch (error) {
-      this.error = error.message;
+      if (request !== this.routeRequest) return;
+      this.treeErrors = new Map(this.treeErrors).set(id, error.message);
     } finally {
-      this.loading = false;
+      if (request === this.routeRequest) {
+        const loading = new Set(this.loadingChildren || []);
+        loading.delete(id);
+        this.loadingChildren = loading;
+      }
     }
   }
 
@@ -116,15 +181,19 @@ class DtsApp extends LitElement {
     return html`
       <main class="grid">
         <dts-collections
-          .collections=${this.childCollections(this.root)}
           .root=${this.root}
-          .selected=${this.collection?.["@id"] === this.root?.["@id"] ? null : this.collection?.["@id"]}
+          .apiRoot=${this.root === this.apiRoot}
+          .collectionPath=${this.collectionPath || []}
           .tree=${this.tree}
+          .treeErrors=${this.treeErrors}
+          .loadingChildren=${this.loadingChildren}
           @collection-select=${this.selectCollection}
           @collection-expand=${this.loadChildren}>
         </dts-collections>
         <dts-resources
-          .resources=${this.collection?.member?.filter(item => item["@type"] === "Resource")}>
+          .resources=${this.collection?.member?.filter(item => item["@type"] === "Resource")}
+          .selected=${this.resource}
+          @resource-select=${this.selectResource}>
         </dts-resources>
       </main>
     `;
