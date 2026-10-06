@@ -1,4 +1,4 @@
-import { LitElement, html, nothing } from "lit";
+import { LitElement, html } from "lit";
 
 class DtsCollections extends LitElement {
   static properties = {
@@ -7,7 +7,8 @@ class DtsCollections extends LitElement {
     collectionPath: {},
     tree: {},
     treeErrors: {},
-    loadingChildren: {}
+    loadingChildren: {},
+    openCollections: { state: true }
   };
 
   createRenderRoot() {
@@ -22,8 +23,17 @@ class DtsCollections extends LitElement {
     }));
   }
 
-  expand(event, collection) {
-    if (event.target.open && collection.totalChildren !== 0 && !this.tree?.has(collection["@id"])) {
+  toggle(event, collection) {
+    const id = collection["@id"];
+    const openCollections = new Set(this.openCollections || []);
+    if (event.target.open) {
+      openCollections.add(id);
+    } else {
+      openCollections.delete(id);
+    }
+    this.openCollections = openCollections;
+
+    if (event.target.open && collection.totalChildren !== 0 && !this.tree?.has(id)) {
       this.dispatchEvent(new CustomEvent("collection-expand", {
         detail: collection,
         bubbles: true,
@@ -35,10 +45,11 @@ class DtsCollections extends LitElement {
   renderCollection(collection, path) {
     const children = this.tree?.get(collection["@id"]) || [];
     const selected = path.at(-1) === this.collectionPath?.at(-1);
-    const expanded = this.collectionPath?.includes(collection["@id"]);
+    const expanded = this.collectionPath?.includes(collection["@id"])
+      || this.openCollections?.has(collection["@id"]);
     return html`
       <li>
-        <details ?open=${expanded ? true : nothing} @toggle=${event => this.expand(event, collection)}>
+        <details ?open=${expanded} @toggle=${event => this.toggle(event, collection)}>
           <summary>${collection.title}</summary>
           <button aria-pressed=${selected}
             @click=${() => this.select(path)}>Auswählen</button>
