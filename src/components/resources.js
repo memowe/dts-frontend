@@ -2,7 +2,6 @@ import { LitElement, html } from "lit";
 
 class DtsResources extends LitElement {
   static properties = {
-    resources: {},
     selected: {},
     content: {}
   };
@@ -11,22 +10,10 @@ class DtsResources extends LitElement {
     return this;
   }
 
-  select(id) {
-    this.dispatchEvent(new CustomEvent("resource-select", {
-      detail: id,
-      bubbles: true,
-      composed: true
-    }));
-  }
-
-  renderResource(resource, selected = false) {
+  renderResource(resource) {
     return html`
       <article>
-        <h3>
-          ${selected ? resource.title : html`
-            <button @click=${() => this.select(resource["@id"])}>${resource.title}</button>
-          `}
-        </h3>
+        <h3>${resource.title}</h3>
         ${resource.description ? html`<p>${resource.description}</p>` : ""}
       </article>
     `;
@@ -35,12 +22,11 @@ class DtsResources extends LitElement {
   render() {
     return html`
       <section>
-        <h2>Resources</h2>
+        <h2>Resource</h2>
         ${this.selected
-          ? html`${this.renderResource(this.selected, true)}
-            <pre><code data-caption="TEI/XML">${this.content}</code></pre>
-            <button @click=${() => this.select(null)}>All resources</button>`
-          : this.resources?.map(resource => this.renderResource(resource))}
+          ? html`${this.renderResource(this.selected)}
+            <pre><code data-caption="TEI/XML">${this.content}</code></pre>`
+          : html`<p>Select a resource</p>`}
       </section>
     `;
   }
