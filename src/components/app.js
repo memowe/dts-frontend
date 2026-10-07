@@ -51,6 +51,7 @@ class DtsApp extends LitElement {
     this.error = "";
     try {
       const entry = await getJson(this.collectionEndpoint);
+      this.apiRoot = entry["@type"] === "Collection" ? entry : null;
       this.collectionUrl = entry.collection;
       if (!this.isConnected) return;
       this.removeNavigationListener?.();
@@ -112,38 +113,29 @@ class DtsApp extends LitElement {
     this.treeStatus = new Map();
 
     try {
-      let root;
-      let collection;
-      const tree = new Map();
-
-      if (route.collections.length) {
-        root = await getJson(expandTemplate(this.collectionUrl, this.collectionEndpoint, route.collections[0]));
+      let apiRoot = this.apiRoot;
+      if (!apiRoot) {
+        apiRoot = await getJson(expandTemplate(this.collectionUrl, this.collectionEndpoint));
         if (request !== this.routeRequest) return;
-        if (root["@id"] !== route.collections[0]) {
-          throw new Error(`Collection not found: ${route.collections[0]}`);
-        }
-        collection = root;
-        tree.set(collection["@id"], this.childCollections(collection));
+        this.apiRoot = apiRoot;
+      }
 
-        for (const id of route.collections.slice(1)) {
-          const children = this.childCollections(collection);
-          const child = children.find(item => item["@id"] === id);
-          if (!child) throw new Error(`Collection not found in path: ${id}`);
-          tree.set(collection["@id"], children);
-          collection = await getJson(expandTemplate(child.collection, this.collectionEndpoint, id));
-          if (request !== this.routeRequest) return;
-          if (collection["@id"] !== id) throw new Error(`Collection not found: ${id}`);
-          tree.set(collection["@id"], this.childCollections(collection));
+      let root = apiRoot;
+      let collection = apiRoot;
+      const tree = new Map();
+      tree.set(collection["@id"], this.childCollections(collection));
+
+      for (const [index, id] of route.collections.entries()) {
+        const children = this.childCollections(collection);
+        const child = children.find(item => item["@id"] === id);
+        if (!child) {
+          throw new Error(index ? `Collection not found in path: ${id}` : `Collection not found: ${id}`);
         }
-      } else {
-        let apiRoot = this.apiRoot;
-        if (!apiRoot) {
-          apiRoot = await getJson(expandTemplate(this.collectionUrl, this.collectionEndpoint));
-          if (request !== this.routeRequest) return;
-          this.apiRoot = apiRoot;
-        }
-        root = apiRoot;
-        collection = apiRoot;
+        tree.set(collection["@id"], children);
+        collection = await getJson(expandTemplate(child.collection, this.collectionEndpoint, id));
+        if (request !== this.routeRequest) return;
+        if (collection["@id"] !== id) throw new Error(`Collection not found: ${id}`);
+        if (index === 0) root = collection;
         tree.set(collection["@id"], this.childCollections(collection));
       }
 
