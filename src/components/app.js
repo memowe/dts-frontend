@@ -191,10 +191,10 @@ class DtsApp extends LitElement {
 
   render() {
     return html`
-      <dialog @cancel=${this.cancelEndpointDialog}>
+      <dialog aria-labelledby="endpoint-dialog-title" @cancel=${this.cancelEndpointDialog}>
         <article>
           <header>
-            <h2>Connect to DTS</h2>
+            <h2 id="endpoint-dialog-title">Connect to DTS</h2>
           </header>
           <form id="collection-endpoint-form" @submit=${this.connect}>
             <label for="collection-endpoint">DTS Collection endpoint</label>
