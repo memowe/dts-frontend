@@ -1,0 +1,64 @@
+.app-main {
+  margin-block-start: var(--pico-block-spacing-vertical);
+}
+
+.collection-tree,
+.collection-tree ul {
+  margin-block: 0;
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.collection-tree ul {
+  margin-block: 0.125rem 0.25rem;
+  padding-inline-start: 0.75rem;
+  font-size: inherit;
+}
+
+.collection-tree li {
+  margin-block: 0.125rem;
+  list-style: none;
+}
+
+.tree-item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.25rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.tree-item:focus-visible {
+  outline: var(--pico-outline-width) solid var(--pico-primary-focus);
+  outline-offset: 0.15rem;
+}
+
+.tree-root {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tree-marker {
+  display: inline-block;
+  flex: 0 0 1.25em;
+  text-align: center;
+}
+
+.tree-resource[aria-pressed="true"] {
+  font-weight: 600;
+}
+
+.tree-message {
+  margin-inline-start: 1.75em;
+}

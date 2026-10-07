@@ -76,12 +76,8 @@ class DtsApp extends LitElement {
     }
   };
 
-  selectCollection(event) {
-    navigateTo(event.detail);
-  }
-
   selectResource(event) {
-    navigateTo(this.collectionPath || [], event.detail);
+    navigateTo(event.detail.collections, event.detail.resource);
   }
 
   async connect(event) {
@@ -107,6 +103,10 @@ class DtsApp extends LitElement {
     return (collection.member || []).filter(item => item["@type"] === "Collection");
   }
 
+  collectionMembers(collection) {
+    return collection.member || [];
+  }
+
   async loadRoute(route) {
     const request = (this.routeRequest || 0) + 1;
     this.routeRequest = request;
@@ -125,7 +125,7 @@ class DtsApp extends LitElement {
       let root = apiRoot;
       let collection = apiRoot;
       const tree = new Map();
-      tree.set(collection["@id"], this.childCollections(collection));
+      tree.set(collection["@id"], this.collectionMembers(collection));
 
       for (const [index, id] of route.collections.entries()) {
         const children = this.childCollections(collection);
@@ -134,12 +134,12 @@ class DtsApp extends LitElement {
         if (!collectionTemplate) {
           throw new Error(index ? `Collection not found in path: ${id}` : `Collection not found: ${id}`);
         }
-        tree.set(collection["@id"], children);
+        tree.set(collection["@id"], this.collectionMembers(collection));
         collection = await getJson(expandTemplate(collectionTemplate, this.collectionEndpoint, id));
         if (request !== this.routeRequest) return;
         if (collection["@id"] !== id) throw new Error(`Collection not found: ${id}`);
         if (index === 0) root = collection;
-        tree.set(collection["@id"], this.childCollections(collection));
+        tree.set(collection["@id"], this.collectionMembers(collection));
       }
 
       let resource = null;
@@ -177,7 +177,7 @@ class DtsApp extends LitElement {
     try {
       const data = await getJson(expandTemplate(collection.collection, this.collectionEndpoint, id));
       if (request !== this.routeRequest) return;
-      this.tree = new Map(this.tree).set(id, this.childCollections(data));
+      this.tree = new Map(this.tree).set(id, this.collectionMembers(data));
     } catch (error) {
       if (request !== this.routeRequest) return;
       this.treeStatus = new Map(this.treeStatus).set(id, { error: error.message });
@@ -220,21 +220,20 @@ class DtsApp extends LitElement {
       ${this.collection && this.error ? html`<p role="alert">Error loading data: ${this.error}</p>` : ""}
       ${this.collection && this.loading ? html`<p role="status" aria-busy="true">Loading…</p>` : ""}
       ${this.collection && !this.loading && !this.error ? html`
-        <main class="grid">
+        <main class="container grid app-main">
           <dtsf-collections
             .root=${this.root}
             .isApiRoot=${this.isApiRoot}
             .collectionPath=${this.collectionPath || []}
             .tree=${this.tree}
             .treeStatus=${this.treeStatus}
-            @collection-select=${this.selectCollection}
-            @collection-expand=${this.loadChildren}>
+            .selected=${this.resource}
+            @collection-expand=${this.loadChildren}
+            @resource-select=${this.selectResource}>
           </dtsf-collections>
           <dtsf-resources
-            .resources=${this.collection?.member?.filter(item => item["@type"] === "Resource")}
             .selected=${this.resource}
-            .content=${this.resourceContent}
-            @resource-select=${this.selectResource}>
+            .content=${this.resourceContent}>
           </dtsf-resources>
         </main>
       ` : ""}

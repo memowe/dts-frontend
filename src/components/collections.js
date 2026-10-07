@@ -5,34 +5,49 @@ class DtsCollections extends LitElement {
     root: {},
     isApiRoot: { type: Boolean },
     collectionPath: {},
+    selected: {},
     tree: {},
     treeStatus: {},
-    openCollections: { state: true }
+    openCollections: { state: true },
+    collapsedCollections: { state: true }
   };
 
   createRenderRoot() {
     return this;
   }
 
-  select(path) {
-    this.dispatchEvent(new CustomEvent("collection-select", {
-      detail: path,
+  selectResource(collections, resource) {
+    this.dispatchEvent(new CustomEvent("resource-select", {
+      detail: { collections, resource },
       bubbles: true,
       composed: true
     }));
   }
 
-  toggle(event, collection) {
+  collectionExpanded(collection, root = false) {
     const id = collection["@id"];
-    const openCollections = new Set(this.openCollections || []);
-    if (event.target.open) {
-      openCollections.add(id);
-    } else {
-      openCollections.delete(id);
-    }
-    this.openCollections = openCollections;
+    if (this.collapsedCollections?.has(id)) return false;
+    return root || this.collectionPath?.includes(id) || this.openCollections?.has(id);
+  }
 
-    if (event.target.open && collection.totalChildren !== 0 && !this.tree?.has(id)) {
+  toggleCollection(collection, root = false) {
+    const id = collection["@id"];
+    const expanded = this.collectionExpanded(collection, root);
+    const openCollections = new Set(this.openCollections || []);
+    const collapsedCollections = new Set(this.collapsedCollections || []);
+
+    if (expanded) {
+      openCollections.delete(id);
+      collapsedCollections.add(id);
+    } else {
+      openCollections.add(id);
+      collapsedCollections.delete(id);
+    }
+
+    this.openCollections = openCollections;
+    this.collapsedCollections = collapsedCollections;
+
+    if (!expanded && Number(collection.totalChildren) !== 0 && !this.tree?.has(id) && !this.treeStatus?.get(id)?.loading) {
       this.dispatchEvent(new CustomEvent("collection-expand", {
         detail: collection,
         bubbles: true,
@@ -41,43 +56,73 @@ class DtsCollections extends LitElement {
     }
   }
 
-  renderCollection(collection, path) {
-    const children = this.tree?.get(collection["@id"]) || [];
-    const status = this.treeStatus?.get(collection["@id"]);
-    const selected = path.at(-1) === this.collectionPath?.at(-1);
-    const expanded = this.collectionPath?.includes(collection["@id"])
-      || this.openCollections?.has(collection["@id"]);
+  renderResource(resource, collections) {
+    const selected = this.selected?.["@id"] === resource["@id"];
     return html`
       <li>
-        <details ?open=${expanded} @toggle=${event => this.toggle(event, collection)}>
-          <summary>${collection.title}</summary>
-          <button aria-pressed=${selected}
-            @click=${() => this.select(path)}>Select</button>
-          ${status?.loading ? html`<p>Loading…</p>` : ""}
-          ${status?.error ? html`<p role="alert">${status.error}</p>` : ""}
-          ${children.length ? html`<ul>${children.map(child =>
-            this.renderCollection(child, [...path, child["@id"]])
-          )}</ul>` : ""}
-        </details>
+        <button class="tree-item tree-resource" aria-pressed=${selected}
+          @click=${() => this.selectResource(collections, resource["@id"])}>
+          <span class="tree-marker" aria-hidden="true">📄</span>
+          <span>${resource.title}</span>
+        </button>
+      </li>
+    `;
+  }
+
+  renderMember(member, collections) {
+    return member["@type"] === "Resource"
+      ? this.renderResource(member, collections)
+      : this.renderCollection(member, [...collections, member["@id"]]);
+  }
+
+  renderCollection(collection, collections) {
+    const id = collection["@id"];
+    const members = this.tree?.get(id) || [];
+    const status = this.treeStatus?.get(id);
+    if (Number(collection.totalChildren) === 0) {
+      return html`
+        <li>
+          <span class="tree-item tree-collection">
+            <span class="tree-marker" aria-hidden="true"></span>
+            <span>${collection.title}</span>
+          </span>
+        </li>
+      `;
+    }
+
+    const expanded = this.collectionExpanded(collection);
+    return html`
+      <li>
+        <button class="tree-item tree-collection" aria-expanded=${expanded}
+          aria-busy=${status?.loading ? "true" : "false"}
+          @click=${() => this.toggleCollection(collection)}>
+          <span class="tree-marker" aria-hidden="true">${expanded ? "▾" : "▸"}</span>
+          <span>${collection.title}</span>
+        </button>
+        ${status?.error ? html`<p class="tree-message" role="alert">${status.error}</p>` : ""}
+        ${status?.loading ? html`<p class="tree-message" aria-busy="true">Loading…</p>` : ""}
+        ${expanded && members.length ? html`<ul>${members.map(member => this.renderMember(member, collections))}</ul>` : ""}
       </li>
     `;
   }
 
   render() {
+    const rootPath = this.isApiRoot ? [] : [this.root?.["@id"]];
+    const members = this.tree?.get(this.root?.["@id"]) || [];
+    const rootExpanded = this.collectionExpanded(this.root, true);
     return html`
       <aside>
         <h2>Collections</h2>
-        <nav>
-          <button aria-pressed=${!this.collectionPath?.length || this.collectionPath.at(-1) === this.root?.["@id"]}
-            @click=${() => this.select(this.isApiRoot ? [] : [this.root?.["@id"]])}>
-            ${this.root?.title}
-          </button>
-          <ul>
-            ${this.tree?.get(this.root?.["@id"])?.map(collection =>
-              this.renderCollection(collection, this.isApiRoot ? [collection["@id"]] : [this.root["@id"], collection["@id"]])
-            )}
-          </ul>
-        </nav>
+        <ul class="collection-tree">
+          <li>
+            <button class="tree-item tree-root" aria-expanded=${rootExpanded}
+              @click=${() => this.toggleCollection(this.root, true)}>
+              <span class="tree-marker" aria-hidden="true">${members.length ? rootExpanded ? "▾" : "▸" : ""}</span>
+              <span>${this.root?.title}</span>
+            </button>
+            ${rootExpanded && members.length ? html`<ul>${members.map(member => this.renderMember(member, rootPath))}</ul>` : ""}
+          </li>
+        </ul>
       </aside>
     `;
   }
