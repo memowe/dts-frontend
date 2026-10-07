@@ -10,7 +10,7 @@ import { expandTemplate, getJson, getText } from "../lib/api.js";
 
 class DtsApp extends LitElement {
   static properties = {
-    apiUrl: {},
+    collectionEndpoint: { state: true },
     apiRoot: { state: true },
     isApiRoot: { state: true },
     collection: { state: true },
@@ -30,21 +30,34 @@ class DtsApp extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    if (this.apiUrl) this.start();
+    this.collectionEndpoint = localStorage.getItem("dtsf-collection-endpoint") || "";
+  }
+
+  firstUpdated() {
+    const dialog = this.querySelector("dialog");
+    if (!dialog) return;
+    document.documentElement.classList.add("modal-is-open");
+    dialog.showModal();
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this.removeNavigationListener?.();
     this.removeNavigationListener = null;
+    const dialog = this.querySelector("dialog");
+    if (dialog?.open) dialog.close();
+    document.documentElement.classList.remove("modal-is-open");
   }
 
   async start() {
     this.loading = true;
+    this.error = "";
     try {
-      const entry = await getJson(this.apiUrl);
+      const entry = await getJson(this.collectionEndpoint);
+      this.apiRoot = entry["@type"] === "Collection" ? entry : null;
       this.collectionUrl = entry.collection;
       if (!this.isConnected) return;
+      this.removeNavigationListener?.();
       this.removeNavigationListener = onNavigationChange(this.onHashChange);
       await this.loadRoute(getNavigationFromUrl());
     } catch (error) {
@@ -71,6 +84,25 @@ class DtsApp extends LitElement {
     navigateTo(this.collectionPath || [], event.detail);
   }
 
+  async connect(event) {
+    event.preventDefault();
+    this.collectionEndpoint = event.currentTarget.elements.collectionEndpoint.value.trim();
+    localStorage.setItem("dtsf-collection-endpoint", this.collectionEndpoint);
+    await this.start();
+    if (this.collection) this.closeEndpointDialog();
+  }
+
+  closeEndpointDialog() {
+    const dialog = this.querySelector("dialog");
+    if (!dialog?.open || this.loading) return;
+    dialog.close();
+    document.documentElement.classList.remove("modal-is-open");
+  }
+
+  cancelEndpointDialog(event) {
+    event.preventDefault();
+  }
+
   childCollections(collection) {
     return (collection.member || []).filter(item => item["@type"] === "Collection");
   }
@@ -83,38 +115,30 @@ class DtsApp extends LitElement {
     this.treeStatus = new Map();
 
     try {
-      let root;
-      let collection;
-      const tree = new Map();
-
-      if (route.collections.length) {
-        root = await getJson(expandTemplate(this.collectionUrl, this.apiUrl, route.collections[0]));
+      let apiRoot = this.apiRoot;
+      if (!apiRoot) {
+        apiRoot = await getJson(expandTemplate(this.collectionUrl, this.collectionEndpoint));
         if (request !== this.routeRequest) return;
-        if (root["@id"] !== route.collections[0]) {
-          throw new Error(`Collection not found: ${route.collections[0]}`);
-        }
-        collection = root;
-        tree.set(collection["@id"], this.childCollections(collection));
+        this.apiRoot = apiRoot;
+      }
 
-        for (const id of route.collections.slice(1)) {
-          const children = this.childCollections(collection);
-          const child = children.find(item => item["@id"] === id);
-          if (!child) throw new Error(`Collection not found in path: ${id}`);
-          tree.set(collection["@id"], children);
-          collection = await getJson(expandTemplate(child.collection, this.apiUrl, id));
-          if (request !== this.routeRequest) return;
-          if (collection["@id"] !== id) throw new Error(`Collection not found: ${id}`);
-          tree.set(collection["@id"], this.childCollections(collection));
+      let root = apiRoot;
+      let collection = apiRoot;
+      const tree = new Map();
+      tree.set(collection["@id"], this.childCollections(collection));
+
+      for (const [index, id] of route.collections.entries()) {
+        const children = this.childCollections(collection);
+        const child = children.find(item => item["@id"] === id);
+        const collectionTemplate = child?.collection || (index === 0 ? this.collectionUrl : null);
+        if (!collectionTemplate) {
+          throw new Error(index ? `Collection not found in path: ${id}` : `Collection not found: ${id}`);
         }
-      } else {
-        let apiRoot = this.apiRoot;
-        if (!apiRoot) {
-          apiRoot = await getJson(expandTemplate(this.collectionUrl, this.apiUrl));
-          if (request !== this.routeRequest) return;
-          this.apiRoot = apiRoot;
-        }
-        root = apiRoot;
-        collection = apiRoot;
+        tree.set(collection["@id"], children);
+        collection = await getJson(expandTemplate(collectionTemplate, this.collectionEndpoint, id));
+        if (request !== this.routeRequest) return;
+        if (collection["@id"] !== id) throw new Error(`Collection not found: ${id}`);
+        if (index === 0) root = collection;
         tree.set(collection["@id"], this.childCollections(collection));
       }
 
@@ -125,7 +149,7 @@ class DtsApp extends LitElement {
           item["@type"] === "Resource" && item["@id"] === route.resource
         );
         if (!resource) throw new Error(`Resource not found in Collection: ${route.resource}`);
-        resourceContent = await getText(expandTemplate(resource.document, this.apiUrl, route.resource));
+        resourceContent = await getText(expandTemplate(resource.document, this.collectionEndpoint, route.resource));
         if (request !== this.routeRequest) return;
       }
 
@@ -151,7 +175,7 @@ class DtsApp extends LitElement {
     this.treeStatus = new Map(this.treeStatus || []).set(id, { loading: true });
 
     try {
-      const data = await getJson(expandTemplate(collection.collection, this.apiUrl, id));
+      const data = await getJson(expandTemplate(collection.collection, this.collectionEndpoint, id));
       if (request !== this.routeRequest) return;
       this.tree = new Map(this.tree).set(id, this.childCollections(data));
     } catch (error) {
@@ -169,27 +193,51 @@ class DtsApp extends LitElement {
   }
 
   render() {
-    if (this.loading) return html`<p>Loading…</p>`;
-    if (this.error) return html`<p>Error loading data: ${this.error}</p>`;
-
     return html`
-      <main class="grid">
-        <dtsf-collections
-          .root=${this.root}
-          .isApiRoot=${this.isApiRoot}
-          .collectionPath=${this.collectionPath || []}
-          .tree=${this.tree}
-          .treeStatus=${this.treeStatus}
-          @collection-select=${this.selectCollection}
-          @collection-expand=${this.loadChildren}>
-        </dtsf-collections>
-        <dtsf-resources
-          .resources=${this.collection?.member?.filter(item => item["@type"] === "Resource")}
-          .selected=${this.resource}
-          .content=${this.resourceContent}
-          @resource-select=${this.selectResource}>
-        </dtsf-resources>
-      </main>
+      <dialog aria-labelledby="endpoint-dialog-title" @cancel=${this.cancelEndpointDialog}>
+        <article>
+          <header>
+            <h2 id="endpoint-dialog-title">Connect to DTS</h2>
+          </header>
+          <form id="collection-endpoint-form" @submit=${this.connect}>
+            <label for="collection-endpoint">DTS Collection endpoint</label>
+            <fieldset role="group">
+              <input
+                id="collection-endpoint"
+                name="collectionEndpoint"
+                type="url"
+                .value=${this.collectionEndpoint || ""}
+                required>
+              <button
+                type="submit"
+                aria-busy=${this.loading ? "true" : "false"}
+                ?disabled=${this.loading}>${this.loading ? "Connecting…" : "Connect"}</button>
+            </fieldset>
+            ${this.error ? html`<p role="alert">Error loading data: ${this.error}</p>` : ""}
+          </form>
+        </article>
+      </dialog>
+      ${this.collection && this.error ? html`<p role="alert">Error loading data: ${this.error}</p>` : ""}
+      ${this.collection && this.loading ? html`<p role="status" aria-busy="true">Loading…</p>` : ""}
+      ${this.collection && !this.loading && !this.error ? html`
+        <main class="grid">
+          <dtsf-collections
+            .root=${this.root}
+            .isApiRoot=${this.isApiRoot}
+            .collectionPath=${this.collectionPath || []}
+            .tree=${this.tree}
+            .treeStatus=${this.treeStatus}
+            @collection-select=${this.selectCollection}
+            @collection-expand=${this.loadChildren}>
+          </dtsf-collections>
+          <dtsf-resources
+            .resources=${this.collection?.member?.filter(item => item["@type"] === "Resource")}
+            .selected=${this.resource}
+            .content=${this.resourceContent}
+            @resource-select=${this.selectResource}>
+          </dtsf-resources>
+        </main>
+      ` : ""}
     `;
   }
 }

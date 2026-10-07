@@ -3,10 +3,10 @@
 A small browser prototype for Collections and Resources from a DTS 1.0 API.
 Lit 3 is loaded from a CDN through an import map; no build system is required.
 
-Configure the API URL in `config.json` under `apiUrl`. By default, the app
-expects a local DTS service at `http://localhost:8080/`. If you serve the
-frontend with `python -m http.server` on port 8000, the service must allow that
-origin through CORS.
+Enter a DTS Collection endpoint when the app opens. The app remembers the last
+endpoint in this browser's local storage. If you serve the frontend with
+`python -m http.server` on port 8000, the DTS service must allow that origin
+through CORS.
 
 The URL represents the Collection hierarchy as a hash route, for example
 `#/collections/<root-id>/<child-id>`. An optional selected Resource appears at
@@ -22,9 +22,9 @@ Collection must be a direct child of the previous one.
 python -m http.server
 ```
 
-GitHub Pages serves the static files directly, without a build step. For a
-GitHub Pages deployment, set `apiUrl` to a reachable DTS service; `localhost`
-always refers to each visitor's own computer.
+GitHub Pages serves the static files directly, without a build step. Enter a
+reachable DTS Collection endpoint; `localhost` always refers to each visitor's
+own computer.
 
 ## Copyright and License
 
