@@ -128,11 +128,12 @@ class DtsApp extends LitElement {
       for (const [index, id] of route.collections.entries()) {
         const children = this.childCollections(collection);
         const child = children.find(item => item["@id"] === id);
-        if (!child) {
+        const collectionTemplate = child?.collection || (index === 0 ? this.collectionUrl : null);
+        if (!collectionTemplate) {
           throw new Error(index ? `Collection not found in path: ${id}` : `Collection not found: ${id}`);
         }
         tree.set(collection["@id"], children);
-        collection = await getJson(expandTemplate(child.collection, this.collectionEndpoint, id));
+        collection = await getJson(expandTemplate(collectionTemplate, this.collectionEndpoint, id));
         if (request !== this.routeRequest) return;
         if (collection["@id"] !== id) throw new Error(`Collection not found: ${id}`);
         if (index === 0) root = collection;
