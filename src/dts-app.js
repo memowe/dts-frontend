@@ -6,24 +6,7 @@ import {
   navigateTo,
   onNavigationChange
 } from "./collection-navigation.js";
-
-const get = async url => {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`${response.status}`);
-  return response.json();
-};
-
-const getText = async url => {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`${response.status}`);
-  return response.text();
-};
-
-const expand = (template, base, id) => new URL(template.replace(/\{([?&])([^}]+)\}/g, (_, prefix, variables) => {
-  const query = variables.split(",").filter(name => ["id", "resource"].includes(name) && id)
-    .map(name => `${name}=${encodeURIComponent(id)}`).join("&");
-  return query ? `${prefix}${query}` : "";
-}), base);
+import { expandTemplate, getJson, getText } from "./dts-api.js";
 
 class DtsApp extends LitElement {
   static properties = {
@@ -59,7 +42,7 @@ class DtsApp extends LitElement {
   async start() {
     this.loading = true;
     try {
-      const entry = await get(this.apiUrl);
+      const entry = await getJson(this.apiUrl);
       this.collectionUrl = entry.collection;
       if (!this.isConnected) return;
       this.removeNavigationListener = onNavigationChange(this.onHashChange);
@@ -105,7 +88,7 @@ class DtsApp extends LitElement {
       const tree = new Map();
 
       if (route.collections.length) {
-        root = await get(expand(this.collectionUrl, this.apiUrl, route.collections[0]));
+        root = await getJson(expandTemplate(this.collectionUrl, this.apiUrl, route.collections[0]));
         if (request !== this.routeRequest) return;
         if (root["@id"] !== route.collections[0]) {
           throw new Error(`Collection not found: ${route.collections[0]}`);
@@ -118,7 +101,7 @@ class DtsApp extends LitElement {
           const child = children.find(item => item["@id"] === id);
           if (!child) throw new Error(`Collection not found in path: ${id}`);
           tree.set(collection["@id"], children);
-          collection = await get(expand(child.collection, this.apiUrl, id));
+          collection = await getJson(expandTemplate(child.collection, this.apiUrl, id));
           if (request !== this.routeRequest) return;
           if (collection["@id"] !== id) throw new Error(`Collection not found: ${id}`);
           tree.set(collection["@id"], this.childCollections(collection));
@@ -126,7 +109,7 @@ class DtsApp extends LitElement {
       } else {
         let apiRoot = this.apiRoot;
         if (!apiRoot) {
-          apiRoot = await get(expand(this.collectionUrl, this.apiUrl));
+          apiRoot = await getJson(expandTemplate(this.collectionUrl, this.apiUrl));
           if (request !== this.routeRequest) return;
           this.apiRoot = apiRoot;
         }
@@ -142,7 +125,7 @@ class DtsApp extends LitElement {
           item["@type"] === "Resource" && item["@id"] === route.resource
         );
         if (!resource) throw new Error(`Resource not found in Collection: ${route.resource}`);
-        resourceContent = await getText(expand(resource.document, this.apiUrl, route.resource));
+        resourceContent = await getText(expandTemplate(resource.document, this.apiUrl, route.resource));
         if (request !== this.routeRequest) return;
       }
 
@@ -168,7 +151,7 @@ class DtsApp extends LitElement {
     this.treeStatus = new Map(this.treeStatus || []).set(id, { loading: true });
 
     try {
-      const data = await get(expand(collection.collection, this.apiUrl, id));
+      const data = await getJson(expandTemplate(collection.collection, this.apiUrl, id));
       if (request !== this.routeRequest) return;
       this.tree = new Map(this.tree).set(id, this.childCollections(data));
     } catch (error) {
