@@ -38,7 +38,7 @@ class DtsResources extends LitElement {
         <h2>Resources</h2>
         ${this.selected
           ? html`${this.renderResource(this.selected, true)}
-            <pre>${this.content}</pre>
+            <pre><code data-caption="TEI/XML">${this.content}</code></pre>
             <button @click=${() => this.select(null)}>All resources</button>`
           : this.resources?.map(resource => this.renderResource(resource))}
       </section>
