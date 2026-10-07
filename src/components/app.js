@@ -174,7 +174,7 @@ class DtsApp extends LitElement {
 
     return html`
       <main class="grid">
-        <dts-collections
+        <dtsf-collections
           .root=${this.root}
           .isApiRoot=${this.isApiRoot}
           .collectionPath=${this.collectionPath || []}
@@ -182,16 +182,16 @@ class DtsApp extends LitElement {
           .treeStatus=${this.treeStatus}
           @collection-select=${this.selectCollection}
           @collection-expand=${this.loadChildren}>
-        </dts-collections>
-        <dts-resources
+        </dtsf-collections>
+        <dtsf-resources
           .resources=${this.collection?.member?.filter(item => item["@type"] === "Resource")}
           .selected=${this.resource}
           .content=${this.resourceContent}
           @resource-select=${this.selectResource}>
-        </dts-resources>
+        </dtsf-resources>
       </main>
     `;
   }
 }
 
-customElements.define("dts-app", DtsApp);
+customElements.define("dtsf-app", DtsApp);
