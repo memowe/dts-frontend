@@ -30,7 +30,7 @@ class DtsApp extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.start();
+    if (this.apiUrl) this.start();
   }
 
   disconnectedCallback() {
