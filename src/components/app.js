@@ -1,12 +1,12 @@
 import { LitElement, html } from "lit";
-import "./dts-collections.js";
-import "./dts-resources.js";
+import "./collections.js";
+import "./resources.js";
 import {
   getNavigationFromUrl,
   navigateTo,
   onNavigationChange
-} from "./collection-navigation.js";
-import { expandTemplate, getJson, getText } from "./dts-api.js";
+} from "../lib/navigation.js";
+import { expandTemplate, getJson, getText } from "../lib/api.js";
 
 class DtsApp extends LitElement {
   static properties = {
