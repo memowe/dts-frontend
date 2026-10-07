@@ -214,6 +214,7 @@ class DtsApp extends LitElement {
           </form>
         </article>
       </dialog>
+      ${this.collection && this.error ? html`<p role="alert">Error loading data: ${this.error}</p>` : ""}
       ${this.collection && !this.loading && !this.error ? html`
         <main class="grid">
           <dtsf-collections
