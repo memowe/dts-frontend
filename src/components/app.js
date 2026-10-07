@@ -44,6 +44,9 @@ class DtsApp extends LitElement {
     super.disconnectedCallback();
     this.removeNavigationListener?.();
     this.removeNavigationListener = null;
+    const dialog = this.querySelector("dialog");
+    if (dialog?.open) dialog.close();
+    document.documentElement.classList.remove("modal-is-open");
   }
 
   async start() {
