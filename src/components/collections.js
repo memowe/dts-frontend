@@ -83,4 +83,4 @@ class DtsCollections extends LitElement {
   }
 }
 
-customElements.define("dts-collections", DtsCollections);
+customElements.define("dtsf-collections", DtsCollections);

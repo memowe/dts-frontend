@@ -46,4 +46,4 @@ class DtsResources extends LitElement {
   }
 }
 
-customElements.define("dts-resources", DtsResources);
+customElements.define("dtsf-resources", DtsResources);
