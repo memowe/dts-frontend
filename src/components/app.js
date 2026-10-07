@@ -98,7 +98,6 @@ class DtsApp extends LitElement {
 
   cancelEndpointDialog(event) {
     event.preventDefault();
-    this.closeEndpointDialog();
   }
 
   childCollections(collection) {
