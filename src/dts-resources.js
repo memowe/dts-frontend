@@ -3,7 +3,8 @@ import { LitElement, html } from "lit";
 class DtsResources extends LitElement {
   static properties = {
     resources: {},
-    selected: {}
+    selected: {},
+    content: {}
   };
 
   createRenderRoot() {
@@ -37,6 +38,7 @@ class DtsResources extends LitElement {
         <h2>Resources</h2>
         ${this.selected
           ? html`${this.renderResource(this.selected, true)}
+            <pre>${this.content}</pre>
             <button @click=${() => this.select(null)}>All resources</button>`
           : this.resources?.map(resource => this.renderResource(resource))}
       </section>

@@ -13,8 +13,14 @@ const get = async url => {
   return response.json();
 };
 
+const getText = async url => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${response.status}`);
+  return response.text();
+};
+
 const expand = (template, base, id) => new URL(template.replace(/\{([?&])([^}]+)\}/g, (_, prefix, variables) => {
-  const query = variables.split(",").filter(name => name === "id" && id)
+  const query = variables.split(",").filter(name => ["id", "resource"].includes(name) && id)
     .map(name => `${name}=${encodeURIComponent(id)}`).join("&");
   return query ? `${prefix}${query}` : "";
 }), base);
@@ -28,6 +34,7 @@ class DtsApp extends LitElement {
     root: { state: true },
     collectionPath: { state: true },
     resource: { state: true },
+    resourceContent: { state: true },
     tree: { state: true },
     treeStatus: { state: true },
     loading: { state: true },
@@ -129,11 +136,14 @@ class DtsApp extends LitElement {
       }
 
       let resource = null;
+      let resourceContent = null;
       if (route.resource) {
         resource = (collection.member || []).find(item =>
           item["@type"] === "Resource" && item["@id"] === route.resource
         );
         if (!resource) throw new Error(`Resource not found in Collection: ${route.resource}`);
+        resourceContent = await getText(expand(resource.document, this.apiUrl, route.resource));
+        if (request !== this.routeRequest) return;
       }
 
       this.root = root;
@@ -141,6 +151,7 @@ class DtsApp extends LitElement {
       this.collectionPath = route.collections;
       this.isApiRoot = route.collections.length === 0;
       this.resource = resource;
+      this.resourceContent = resourceContent;
       this.tree = tree;
     } catch (error) {
       if (request === this.routeRequest) this.error = error.message;
@@ -192,6 +203,7 @@ class DtsApp extends LitElement {
         <dts-resources
           .resources=${this.collection?.member?.filter(item => item["@type"] === "Resource")}
           .selected=${this.resource}
+          .content=${this.resourceContent}
           @resource-select=${this.selectResource}>
         </dts-resources>
       </main>
