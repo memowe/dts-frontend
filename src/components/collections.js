@@ -1,4 +1,5 @@
 import { LitElement, html } from "lit";
+import { getNavigationPath } from "../lib/navigation.js";
 
 class DtsCollections extends LitElement {
   static properties = {
@@ -16,38 +17,30 @@ class DtsCollections extends LitElement {
     return this;
   }
 
-  selectResource(collections, resource) {
-    this.dispatchEvent(new CustomEvent("resource-select", {
-      detail: { collections, resource },
-      bubbles: true,
-      composed: true
-    }));
-  }
-
   collectionExpanded(collection, root = false) {
     const id = collection["@id"];
     if (this.collapsedCollections?.has(id)) return false;
     return root || this.collectionPath?.includes(id) || this.openCollections?.has(id);
   }
 
-  toggleCollection(collection, root = false) {
+  toggleCollection(event, collection, root = false) {
     const id = collection["@id"];
-    const expanded = this.collectionExpanded(collection, root);
+    const expanded = event.currentTarget.open;
     const openCollections = new Set(this.openCollections || []);
     const collapsedCollections = new Set(this.collapsedCollections || []);
 
     if (expanded) {
-      openCollections.delete(id);
-      collapsedCollections.add(id);
-    } else {
       openCollections.add(id);
       collapsedCollections.delete(id);
+    } else {
+      openCollections.delete(id);
+      collapsedCollections.add(id);
     }
 
     this.openCollections = openCollections;
     this.collapsedCollections = collapsedCollections;
 
-    if (!expanded && Number(collection.totalChildren) !== 0 && !this.tree?.has(id) && !this.treeStatus?.get(id)?.loading) {
+    if (expanded && Number(collection.totalChildren) !== 0 && !this.tree?.has(id) && !this.treeStatus?.get(id)?.loading) {
       this.dispatchEvent(new CustomEvent("collection-expand", {
         detail: collection,
         bubbles: true,
@@ -60,12 +53,18 @@ class DtsCollections extends LitElement {
     const selected = this.selected?.["@id"] === resource["@id"];
     return html`
       <li>
-        <button class="tree-item tree-resource" aria-pressed=${selected}
-          @click=${() => this.selectResource(collections, resource["@id"])}>
-          <span class="tree-marker" aria-hidden="true">📄</span>
-          <span>${resource.title}</span>
-        </button>
+        <a aria-current=${selected ? "page" : "false"}
+          href=${`#${getNavigationPath(collections, resource["@id"])}`}>📄 ${resource.title}
+        </a>
       </li>
+    `;
+  }
+
+  renderMembers(members, collections) {
+    return html`
+      <ul class="unlist" style="padding-inline-start: 0.75rem">
+        ${members.map(member => this.renderMember(member, collections))}
+      </ul>
     `;
   }
 
@@ -80,28 +79,18 @@ class DtsCollections extends LitElement {
     const members = this.tree?.get(id) || [];
     const status = this.treeStatus?.get(id);
     if (Number(collection.totalChildren) === 0) {
-      return html`
-        <li>
-          <span class="tree-item tree-collection">
-            <span class="tree-marker" aria-hidden="true"></span>
-            <span>${collection.title}</span>
-          </span>
-        </li>
-      `;
+      return html`<li>${collection.title}</li>`;
     }
 
     const expanded = this.collectionExpanded(collection);
     return html`
       <li>
-        <button class="tree-item tree-collection" aria-expanded=${expanded}
-          aria-busy=${status?.loading ? "true" : "false"}
-          @click=${() => this.toggleCollection(collection)}>
-          <span class="tree-marker" aria-hidden="true">${expanded ? "▾" : "▸"}</span>
-          <span>${collection.title}</span>
-        </button>
-        ${status?.error ? html`<p class="tree-message" role="alert">${status.error}</p>` : ""}
-        ${status?.loading ? html`<p class="tree-message" aria-busy="true">Loading…</p>` : ""}
-        ${expanded && members.length ? html`<ul>${members.map(member => this.renderMember(member, collections))}</ul>` : ""}
+        <details ?open=${expanded} @toggle=${event => this.toggleCollection(event, collection)}>
+          <summary>${collection.title}</summary>
+          ${status?.error ? html`<p role="alert">${status.error}</p>` : ""}
+          ${status?.loading ? html`<p aria-busy="true">Loading…</p>` : ""}
+          ${expanded && members.length ? this.renderMembers(members, collections) : ""}
+        </details>
       </li>
     `;
   }
@@ -113,14 +102,12 @@ class DtsCollections extends LitElement {
     return html`
       <aside>
         <h2>Collections</h2>
-        <ul class="collection-tree">
+        <ul class="unlist" style="padding-inline-start: 0">
           <li>
-            <button class="tree-item tree-root" aria-expanded=${rootExpanded}
-              @click=${() => this.toggleCollection(this.root, true)}>
-              <span class="tree-marker" aria-hidden="true">${members.length ? rootExpanded ? "▾" : "▸" : ""}</span>
-              <span>${this.root?.title}</span>
-            </button>
-            ${rootExpanded && members.length ? html`<ul>${members.map(member => this.renderMember(member, rootPath))}</ul>` : ""}
+            <details ?open=${rootExpanded} @toggle=${event => this.toggleCollection(event, this.root, true)}>
+              <summary>${this.root?.title}</summary>
+              ${rootExpanded && members.length ? this.renderMembers(members, rootPath) : ""}
+            </details>
           </li>
         </ul>
       </aside>

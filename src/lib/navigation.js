@@ -39,15 +39,18 @@ export const getNavigationFromUrl = () => {
   return { collections, resource };
 };
 
-export const navigateTo = (collections, resource = null) => {
+export const getNavigationPath = (collections, resource = null) => {
   if (!collections.length) {
-    window.location.hash = resource ? `/resources/${encode(resource)}` : "/";
-    return;
+    return resource ? `/resources/${encode(resource)}` : "/";
   }
 
   const path = collections.map(encode).join("/");
   const resourcePath = resource ? `/resources/${encode(resource)}` : "";
-  window.location.hash = `/collections/${path}${resourcePath}`;
+  return `/collections/${path}${resourcePath}`;
+};
+
+export const navigateTo = (collections, resource = null) => {
+  window.location.hash = getNavigationPath(collections, resource);
 };
 
 export const onNavigationChange = callback => {

@@ -220,7 +220,7 @@ class DtsApp extends LitElement {
       ${this.collection && this.error ? html`<p role="alert">Error loading data: ${this.error}</p>` : ""}
       ${this.collection && this.loading ? html`<p role="status" aria-busy="true">Loading…</p>` : ""}
       ${this.collection && !this.loading && !this.error ? html`
-        <main class="container grid app-main">
+        <div class="grid">
           <dtsf-collections
             .root=${this.root}
             .isApiRoot=${this.isApiRoot}
@@ -235,7 +235,7 @@ class DtsApp extends LitElement {
             .selected=${this.resource}
             .content=${this.resourceContent}>
           </dtsf-resources>
-        </main>
+        </div>
       ` : ""}
     `;
   }
